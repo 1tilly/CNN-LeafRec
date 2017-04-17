@@ -41,7 +41,7 @@ class Runner():
 
     def start(self,widget, data=None):
         print "started"
-        ConvolutionalNetwork.
+        ConvolutionalNetwork
 
 
 

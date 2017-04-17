@@ -211,6 +211,7 @@ def load_data(dataset):
             train_set, valid_set, test_set = pickle.load(f, encoding='latin1')
         except:
             train_set, valid_set, test_set = pickle.load(f)
+
     # train_set, valid_set, test_set format: tuple(input, target)
     # input is a numpy.ndarray of 2 dimensions (a matrix)
     # where each row corresponds to an example. target is a

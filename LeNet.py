@@ -35,7 +35,8 @@ import theano.tensor as T
 from theano.tensor.signal import pool
 from theano.tensor.nnet import conv2d
 
-from logistic_sgd import LogisticRegression, load_data
+from logistic_sgd import LogisticRegression , load_data
+#from ConvolutionalNetwork import load_data
 from mlp import HiddenLayer
 
 
@@ -117,7 +118,7 @@ class LeNetConvPoolLayer(object):
         self.input = input
 
 
-def evaluate_lenet5(learning_rate=0.1, n_epochs=200,
+def evaluate_lenet5(learning_rate=0.1, n_epochs=20,
                     dataset='mnist.pkl.gz',
                     nkerns=[20, 50], batch_size=500):
     """ Demonstrates lenet on MNIST dataset
@@ -138,8 +139,11 @@ def evaluate_lenet5(learning_rate=0.1, n_epochs=200,
 
     rng = numpy.random.RandomState(23455)
 
+    #datasets = load_data('./data/BW')
+    width, height, filter_x, filter_y = 28, 28, 5, 5
+    pool_x, pool_y = 2, 2
     datasets = load_data(dataset)
-
+    #print(datasets)
     train_set_x, train_set_y = datasets[0]
     valid_set_x, valid_set_y = datasets[1]
     test_set_x, test_set_y = datasets[2]
@@ -156,20 +160,24 @@ def evaluate_lenet5(learning_rate=0.1, n_epochs=200,
     index = T.lscalar()  # index to a [mini]batch
 
     # start-snippet-1
-    x = T.matrix('x')   # the data is presented as rasterized images
+    x = T.matrix('x')  # the data is presented as rasterized images
     y = T.ivector('y')  # the labels are presented as 1D vector of
-                        # [int] labels
+    # [int] labels
 
     ######################
     # BUILD ACTUAL MODEL #
     ######################
     print('... building the model')
+    print("Batchsize: " + str(batch_size))
+    print(','.join(["Height, width:", str(height), str(width), "Filter:", str(filter_x), str(filter_y)]))
+    print(",".join([str(nkerns[0]), str(nkerns[1])]))
+    print(",".join(['train_batches', str(n_train_batches),
+                    str(nkerns[1] * (((height - filter_x - 1) / 4) * ((width - filter_y - 1) / 4)))]))
 
     # Reshape matrix of rasterized images of shape (batch_size, 28 * 28)
     # to a 4D tensor, compatible with our LeNetConvPoolLayer
     # (28, 28) is the size of MNIST images.
-    layer0_input = x.reshape((batch_size, 1, 28, 28))
-
+    layer0_input = x.reshape((batch_size, 1, height, width))
     # Construct the first convolutional pooling layer:
     # filtering reduces the image size to (28-5+1 , 28-5+1) = (24, 24)
     # maxpooling reduces this further to (24/2, 24/2) = (12, 12)
@@ -177,11 +185,13 @@ def evaluate_lenet5(learning_rate=0.1, n_epochs=200,
     layer0 = LeNetConvPoolLayer(
         rng,
         input=layer0_input,
-        image_shape=(batch_size, 1, 28, 28),
-        filter_shape=(nkerns[0], 1, 5, 5),
-        poolsize=(2, 2)
+        image_shape=(batch_size, 1, height, width),
+        filter_shape=(nkerns[0], 1, filter_x, filter_y),
+        poolsize=(pool_x, pool_y)
     )
 
+    height_1 = (height - (filter_x - 1)) / 2
+    width_1 = (width - (filter_y - 1)) / 2
     # Construct the second convolutional pooling layer
     # filtering reduces the image size to (12-5+1, 12-5+1) = (8, 8)
     # maxpooling reduces this further to (8/2, 8/2) = (4, 4)
@@ -189,11 +199,12 @@ def evaluate_lenet5(learning_rate=0.1, n_epochs=200,
     layer1 = LeNetConvPoolLayer(
         rng,
         input=layer0.output,
-        image_shape=(batch_size, nkerns[0], 12, 12),
-        filter_shape=(nkerns[1], nkerns[0], 5, 5),
-        poolsize=(2, 2)
+        image_shape=(batch_size, nkerns[0], height_1, width_1),
+        filter_shape=(nkerns[1], nkerns[0], filter_x, filter_y),
+        poolsize=(pool_x, pool_y)
     )
-
+    height_2 = (height_1 - (filter_x - 1)) / 2
+    width_2 = (width_1 - (filter_x - 1)) / 2
     # the HiddenLayer being fully-connected, it operates on 2D matrices of
     # shape (batch_size, num_pixels) (i.e matrix of rasterized images).
     # This will generate a matrix of shape (batch_size, nkerns[1] * 4 * 4),
@@ -204,7 +215,7 @@ def evaluate_lenet5(learning_rate=0.1, n_epochs=200,
     layer2 = HiddenLayer(
         rng,
         input=layer2_input,
-        n_in=nkerns[1] * 4 * 4,
+        n_in=nkerns[1] * height_2 * width_2,
         n_out=500,
         activation=T.tanh
     )
@@ -248,7 +259,7 @@ def evaluate_lenet5(learning_rate=0.1, n_epochs=200,
     updates = [
         (param_i, param_i - learning_rate * grad_i)
         for param_i, grad_i in zip(params, grads)
-    ]
+        ]
 
     train_model = theano.function(
         [index],
@@ -268,14 +279,14 @@ def evaluate_lenet5(learning_rate=0.1, n_epochs=200,
     # early-stopping parameters
     patience = 10000  # look as this many examples regardless
     patience_increase = 2  # wait this much longer when a new best is
-                           # found
+    # found
     improvement_threshold = 0.995  # a relative improvement of this much is
-                                   # considered significant
+    # considered significant
     validation_frequency = min(n_train_batches, patience // 2)
-                                  # go through this many
-                                  # minibatche before checking the network
-                                  # on the validation set; in this case we
-                                  # check every epoch
+    # go through this many
+    # minibatche before checking the network
+    # on the validation set; in this case we
+    # check every epoch
 
     best_validation_loss = numpy.inf
     best_iter = 0
@@ -287,7 +298,7 @@ def evaluate_lenet5(learning_rate=0.1, n_epochs=200,
 
     while (epoch < n_epochs) and (not done_looping):
         epoch = epoch + 1
-        for minibatch_index in range(n_train_batches):
+        for minibatch_index in range(n_train_batches - 1):
 
             iter = (epoch - 1) * n_train_batches + minibatch_index
 
@@ -308,9 +319,9 @@ def evaluate_lenet5(learning_rate=0.1, n_epochs=200,
                 # if we got the best validation score until now
                 if this_validation_loss < best_validation_loss:
 
-                    #improve patience if loss improvement is good enough
-                    if this_validation_loss < best_validation_loss *  \
-                       improvement_threshold:
+                    # improve patience if loss improvement is good enough
+                    if this_validation_loss < best_validation_loss * \
+                            improvement_threshold:
                         patience = max(patience, iter * patience_increase)
 
                     # save best validation score and iteration number
@@ -321,7 +332,7 @@ def evaluate_lenet5(learning_rate=0.1, n_epochs=200,
                     test_losses = [
                         test_model(i)
                         for i in range(n_test_batches)
-                    ]
+                        ]
                     test_score = numpy.mean(test_losses)
                     print(('     epoch %i, minibatch %i/%i, test error of '
                            'best model %f %%') %
@@ -340,6 +351,7 @@ def evaluate_lenet5(learning_rate=0.1, n_epochs=200,
     print(('The code for file ' +
            os.path.split(__file__)[1] +
            ' ran for %.2fm' % ((end_time - start_time) / 60.)), file=sys.stderr)
+
 
 if __name__ == '__main__':
     evaluate_lenet5()
