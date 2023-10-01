@@ -1,0 +1,1 @@
+conda create --name theano_39 python=3.9 numpy=1.19.5 theano tensorflow-datasets
