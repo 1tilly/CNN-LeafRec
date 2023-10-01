@@ -40,7 +40,7 @@ def shared_dataset(data_x, data_y, borrow=True):
 
 def load_and_split_dataset():
     # Load the leaf dataset
-    dataset, info = tfds.load('plant_leaves', with_info=True, as_supervised=True, split='train')
+    dataset, info = tfds.load('oxford_flowers102', with_info=True, as_supervised=True, split=['train', 'test[70%:90%]', 'validation[90%:]']) #plant_leaves can't download for some reason
     
     # Get the number of classes
     num_classes = info.features['label'].num_classes
@@ -48,20 +48,10 @@ def load_and_split_dataset():
     # Calculate the total number of samples
     total_samples = info.splits['train'].num_examples
     
-    # Define the ratio for train, test, and eval
-    train_ratio = 0.7
-    test_ratio = 0.2
-    eval_ratio = 0.1 # not used, but for the sake of completeness I included it
-    
-    # Calculate the number of samples for each set
-    train_size = int(train_ratio * total_samples)
-    test_size = int(test_ratio * total_samples)
-    eval_size = total_samples - train_size - test_size # not used, but for the sake of completeness I included it
     
     # Create the dataset splits
-    train_dataset = dataset.take(train_size)
-    test_dataset = dataset.skip(train_size).take(test_size)
-    eval_dataset = dataset.skip(train_size + test_size)
+    train_dataset, test_dataset, eval_dataset = dataset
+
     
     # Preprocess the datasets
     train_images, train_labels = preprocess(train_dataset, info)
